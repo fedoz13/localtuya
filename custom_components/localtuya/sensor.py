@@ -74,6 +74,9 @@ class LocaltuyaSensor(LocalTuyaEntity):
         #self._state = state
         if state is None: 
             self._state = state
+        elif state == "-1" or state == -1:
+            self._state = -1
+            return
         else:
             scale_factor = self._config.get(CONF_SCALING)
             base64_dec = self._config.get(CONF_BASE64_DECODE)
