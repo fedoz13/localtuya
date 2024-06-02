@@ -65,7 +65,7 @@ _LOGGER = logging.getLogger(__name__)
 
 HVAC_MODE_SETS = {
     "manual/auto": {
-        HVACMode.HEAT: "manual",
+        HVACMode.HEAT: "heat",
         HVACMode.AUTO: "auto",
     },
     "Manual/Auto": {
@@ -105,8 +105,8 @@ HVAC_ACTION_SETS = {
         HVACAction.IDLE: "close",
     },
     "heating/no_heating": {
-        HVACAction.HEATING: "heating",
-        HVACAction.IDLE: "no_heating",
+        HVACAction.HEATING: "heat",
+        HVACAction.IDLE: "auto",
     },
     "Heat/Warming": {
         HVACAction.HEATING: "Heat",
@@ -187,11 +187,11 @@ class LocaltuyaClimate(LocalTuyaEntity, ClimateEntity):
         self,
         device,
         config_entry,
-        switchid,
+        config_entity,
         **kwargs,
     ):
         """Initialize a new LocaltuyaClimate."""
-        super().__init__(device, config_entry, switchid, _LOGGER, **kwargs)
+        super().__init__(device, config_entry, config_entity, _LOGGER, **kwargs)
         self._state = None
         self._target_temperature = None
         self._current_temperature = None
