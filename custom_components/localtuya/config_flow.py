@@ -2,6 +2,7 @@
 import errno
 import logging
 import time
+import re
 from importlib import import_module
 
 import homeassistant.helpers.config_validation as cv
@@ -48,6 +49,7 @@ from .const import (
     DATA_DISCOVERY,
     DOMAIN,
     PLATFORMS,
+    CONF_BYTES_RANGE,
 )
 from .discovery import discover
 
@@ -81,6 +83,22 @@ CLOUD_SETUP_SCHEMA = vol.Schema(
         vol.Optional(CONF_USER_ID): cv.string,
         vol.Optional(CONF_USERNAME, default=DOMAIN): cv.string,
         vol.Required(CONF_NO_CLOUD, default=False): bool,
+    }
+)
+
+CONFIGURE_DEVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_FRIENDLY_NAME): str,
+        vol.Required(CONF_LOCAL_KEY): str,
+        vol.Required(CONF_HOST): str,
+        vol.Required(CONF_DEVICE_ID): str,
+        vol.Required(CONF_PROTOCOL_VERSION, default="3.3"): vol.In(
+            ["3.1", "3.2", "3.3", "3.4"]
+        ),
+        vol.Required(CONF_ENABLE_DEBUG, default=False): bool,
+        vol.Optional(CONF_SCAN_INTERVAL): int,
+        vol.Optional(CONF_MANUAL_DPS): str,
+        vol.Optional(CONF_RESET_DPIDS): str,
     }
 )
 
@@ -580,16 +598,28 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
                             description_placeholders={},
                         )
                     if user_input[CONF_ENTITIES]:
-                        entity_ids = [
-                            int(entity.split(":")[0])
-                            for entity in user_input[CONF_ENTITIES]
-                        ]
+                        #entity_ids = [
+                        #    int(entity.split(":")[0])
+                        #    for entity in user_input[CONF_ENTITIES]
+                        #]
                         device_config = self.config_entry.data[CONF_DEVICES][dev_id]
-                        self.entities = [
-                            entity
-                            for entity in device_config[CONF_ENTITIES]
-                            if entity[CONF_ID] in entity_ids
-                        ]
+                        #self.entities = [
+                        #    entity
+                        #    for entity in device_config[CONF_ENTITIES]
+                        #    if entity[CONF_ID] in entity_ids
+                        #]
+                        self.entities = []
+                        for entity in device_config[CONF_ENTITIES]:
+                            if CONF_BYTES_RANGE in entity and entity[CONF_BYTES_RANGE]:
+                                range_replaced = entity[CONF_BYTES_RANGE].replace(":",",")
+                                check_entity_id = f"{entity[CONF_ID]}:{range_replaced}: "
+                            else:
+                                check_entity_id = f"{entity[CONF_ID]}: "
+                            for user_entity in user_input[CONF_ENTITIES]:
+                                if check_entity_id == user_entity[:len(check_entity_id)]:
+                                     self.entities.append(entity)
+                                     break
+
                         return await self.async_step_configure_entity()
 
                 self.dps_strings = await validate_input(self.hass, user_input)
@@ -623,6 +653,7 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
                     placeholders = {"for_device": f" for device `{dev_id}`.{note}"}
             defaults[CONF_ENABLE_ADD_ENTITIES] = False
             schema = schema_defaults(options_schema(self.entities), **defaults)
+            #placeholders = {"for_device": f" for device `{dev_id}`"}
         else:
             defaults[CONF_PROTOCOL_VERSION] = "3.3"
             defaults[CONF_HOST] = ""
@@ -640,6 +671,7 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
                     defaults[CONF_LOCAL_KEY] = cloud_devs[dev_id].get(CONF_LOCAL_KEY)
                     defaults[CONF_FRIENDLY_NAME] = cloud_devs[dev_id].get(CONF_NAME)
             schema = schema_defaults(DEVICE_SCHEMA, **defaults)
+            #schema = schema_defaults(CONFIGURE_DEVICE_SCHEMA, **defaults)
 
             placeholders = {"for_device": ""}
 
@@ -687,12 +719,15 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
 
     def available_dps_strings(self):
         """Return list of DPs use by the device's entities."""
-        available_dps = []
-        used_dps = [str(entity[CONF_ID]) for entity in self.entities]
-        for dp_string in self.dps_strings:
-            dp = dp_string.split(" ")[0]
-            if dp not in used_dps:
-                available_dps.append(dp_string)
+        if self.selected_platform == "sensor":
+            available_dps = [dp_string for dp_string in self.dps_strings]
+        else:
+            available_dps = []
+            used_dps = [str(entity[CONF_ID]) for entity in self.entities]
+            for dp_string in self.dps_strings:
+                dp = dp_string.split(" ")[0]
+                if dp not in used_dps:
+                    available_dps.append(dp_string)
         return available_dps
 
     async def async_step_entity(self, user_input=None):
@@ -731,6 +766,15 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
         """Manage entity settings."""
         errors = {}
         if user_input is not None:
+            if CONF_BYTES_RANGE in user_input and user_input[CONF_BYTES_RANGE] and not re.match("^[0123456789]:[1234]$", user_input[CONF_BYTES_RANGE]):
+                return self.async_abort(
+                    reason="input_value_error",
+                    description_placeholders={
+                        "value": user_input[CONF_BYTES_RANGE],
+                        "field": CONF_BYTES_RANGE,
+                    },
+                )
+
             if self.editing_device:
                 entity = strip_dps_values(user_input, self.dps_strings)
                 entity[CONF_ID] = self.current_entity[CONF_ID]
@@ -760,6 +804,17 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
                     )
                     return self.async_create_entry(title="", data={})
             else:
+                if CONF_BYTES_RANGE in user_input and user_input[CONF_BYTES_RANGE]:
+                    user_conf_id = int(user_input[CONF_ID].split(" ")[0])
+                    for check_entity in self.device_data[CONF_ENTITIES]:
+                        if check_entity[CONF_ID] == user_conf_id and check_entity[CONF_BYTES_RANGE] ==  user_input[CONF_BYTES_RANGE]:
+                            return self.async_abort(
+                                reason="sensor_uid_error",
+                                description_placeholders={
+                                    "value": str(user_conf_id)+" ("+user_input[CONF_BYTES_RANGE]+")",
+                                },
+                            )
+
                 user_input[CONF_PLATFORM] = self.selected_platform
                 self.entities.append(strip_dps_values(user_input, self.dps_strings))
                 # new entity added. Let's check if there are more left...
