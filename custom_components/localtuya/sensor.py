@@ -13,7 +13,7 @@ from homeassistant.const import (
 )
 
 from .common import LocalTuyaEntity, async_setup_entry
-from .const import CONF_SCALING, CONF_BASE64_DECODE, CONF_BYTES_RANGE, CONF_ROUND_PRECISION
+from .const import CONF_SCALING, CONF_BASE64_DECODE, CONF_BYTES_RANGE, CONF_ROUND_PRECISION, CONF_SIGNED_INTEGER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ def flow_schema(dps):
         vol.Optional(CONF_ROUND_PRECISION): vol.All(
             vol.Coerce(int), vol.Range(min=0, max=3)
         ),
+        vol.Optional(CONF_SIGNED_INTEGER): vol.Coerce(bool),
     }
 
 
@@ -74,20 +75,24 @@ class LocaltuyaSensor(LocalTuyaEntity):
         #self._state = state
         if state is None: 
             self._state = state
-        elif state == "-1" or state == -1:
-            self._state = -1
-            return
+        #elif state == "-1" or state == -1:
+        #    self._state = -1
+        #    return
         else:
             scale_factor = self._config.get(CONF_SCALING)
             base64_dec = self._config.get(CONF_BASE64_DECODE)
             bin_byte_range = self._config.get(CONF_BYTES_RANGE)
             round_precision = self._config.get(CONF_ROUND_PRECISION)
+            signed_integer = self._config.get(CONF_SIGNED_INTEGER)
             if base64_dec is not None and base64_dec == True:
                 state = base64.b64decode(state)
             if bin_byte_range is not None:
                 ranges = bin_byte_range.split(":")
                 state = state[int(ranges[0]):(int(ranges[0])+int(ranges[1]))]
-                state = int.from_bytes(state, byteorder='big')
+                if signed_integer == True:
+                    state = int.from_bytes(state, byteorder='big', signed=True)
+                else:
+                    state = int.from_bytes(state, byteorder='big')
             if scale_factor is not None and isinstance(state, (int, float)):
                 state = state * scale_factor
             if round_precision is not None and isinstance(state, (float)):

@@ -141,6 +141,7 @@
                     "base64_decode": "Base64 Payload",
                     "bytes_range": "Value Bytes range ('from[starting from 0]:count', examples: '0:3';'4:2')",
                     "round_precision": "Round decimals",
+                    "signed_integer": "Signed Integer",
                     "state_on": "On Value",
                     "state_off": "Off Value",
                     "powergo_dp": "Power DP (Usually 25 or 2)",

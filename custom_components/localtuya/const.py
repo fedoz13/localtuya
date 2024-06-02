@@ -87,6 +87,7 @@ CONF_SCALING = "scaling"
 CONF_BASE64_DECODE = "base64_decode"
 CONF_BYTES_RANGE = "bytes_range"
 CONF_ROUND_PRECISION = "round_precision"
+CONF_SIGNED_INTEGER = "signed_integer"
 
 # climate
 CONF_TARGET_TEMPERATURE_DP = "target_temperature_dp"
