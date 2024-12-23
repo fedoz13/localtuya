@@ -1,6 +1,12 @@
-![logo](https://github.com/rospogrigio/localtuya-homeassistant/blob/master/img/logo-small.png)
+![logo](https://github.com/fedoz13/localtuya/blob/master/img/logo-small.png)
 
 A Home Assistant custom Integration for local handling of Tuya-based devices.
+
+# Fork
+
+This is a custom fork based on the Local Tuya integration by rospogrigio (https://github.com/rospogrigio/localtuya) to work with the latest version of Home Assistant and add support for decoding base64 DPs.
+
+# Local Tuya
 
 This custom integration updates device status via pushing updates instead of polling, so status updates are fast (even when manually operated).
 The integration also supports the Tuya IoT Cloud APIs, for the retrieval of info and of the local_keys of the devices. 
