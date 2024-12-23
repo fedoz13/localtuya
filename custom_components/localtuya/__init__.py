@@ -281,7 +281,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         await async_remove_orphan_entities(hass, entry)
 
-    hass.async_create_task(setup_entities(entry.data[CONF_DEVICES].keys()))
+    await setup_entities(entry.data[CONF_DEVICES].keys())
 
     unsub_listener = entry.add_update_listener(update_listener)
     hass.data[DOMAIN][entry.entry_id] = {UNSUB_LISTENER: unsub_listener}
