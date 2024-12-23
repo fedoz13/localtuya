@@ -7,7 +7,7 @@ from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.entity_registry as er
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, async_forward_entry_setups
 from homeassistant.const import (
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
@@ -26,6 +26,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.service import async_register_admin_service
 
 from .cloud_api import TuyaCloudApi
 from .common import TuyaDevice, async_config_entry_by_device_id
@@ -162,10 +163,11 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     async_track_time_interval(hass, _async_reconnect, RECONNECT_INTERVAL)
 
-    hass.helpers.service.async_register_admin_service(
+    async_register_admin_service(
+        hass,
         DOMAIN,
         SERVICE_RELOAD,
-        _handle_reload,
+        _handle_reload
     )
 
     hass.services.async_register(
@@ -272,7 +274,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         # Setup all platforms at once, letting HA handling each platform and avoiding
         # potential integration restarts while elements are still initialising.
-        await hass.config_entries.async_forward_entry_setups(entry, platforms)
+        await async_forward_entry_setups(hass, entry, platforms)
 
         for dev_id in device_ids:
             hass.data[DOMAIN][TUYA_DEVICES][dev_id].async_connect()
