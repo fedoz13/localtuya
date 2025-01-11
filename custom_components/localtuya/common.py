@@ -291,7 +291,6 @@ class TuyaDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
                 self._unsub_interval = async_track_time_interval(
                     self._hass,
                     self._async_refresh,
-                    self._async_send_update,
                     timedelta(seconds=int(self._dev_config_entry[CONF_SCAN_INTERVAL])),
                 )
 
@@ -318,10 +317,6 @@ class TuyaDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
     async def _async_refresh(self, _now):
         if self._interface is not None:
             await self._interface.update_dps()
-
-    async def _async_send_update(self, _now):
-        if self._interface is not None:
-            await self._interface.set_dp("AQEBAQE=", 1)
 
     async def close(self):
         """Close connection and stop re-connect loop."""
